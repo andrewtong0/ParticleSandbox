@@ -1,6 +1,8 @@
 const CONSTANTS = {
-    PARTICLE_SIZE: 5,
-    WORLD_SPEED: 5
+    PARTICLE_SIZE: 2000,
+    WORLD_SPEED: 2000,
+    CANVAS_WIDTH: 500,
+    CANVAS_HEIGHT: 500
 }
 
 module.exports = CONSTANTS;

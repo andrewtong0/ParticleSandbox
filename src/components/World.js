@@ -1,28 +1,36 @@
 import React from 'react';
-import Particle from './Particle.js';
 import constants from '../constants.js';
+import createParticle from './Particle.js';
 import './World.css';
 
 export default class World extends React.Component {
   constructor(props) {
     super(props);
 
-    this.areCoordinatesWithinWorldBounds = this.areCoordinatesWithinWorldBounds.bind(this);
-    this.tickParticles = this.tickParticles.bind(this);
-    this.clickInWorld = this.clickInWorld.bind(this);
-    this.getArrayOfParticles = this.getArrayOfParticles.bind(this);
-    this.getIsParticleAtPosition = this.getIsParticleAtPosition.bind(this);
+    this.worldTick = this.worldTick.bind(this);
+    this.coordinatesWithinBounds = this.coordinatesWithinBounds.bind(this);
+    this.addParticleToWorld = this.addParticleToWorld.bind(this);
 
     this.state = {
-      width: 200,
-      height: 200,
-      gravity: true,
       worldParticles: []
     }
   }
 
-  areCoordinatesWithinWorldBounds(xpos, ypos) {
-    const worldContainerInfo = document.getElementsByClassName("worldContainer")[0].getBoundingClientRect();
+  componentDidMount() {
+    this.interval = setInterval(() => {
+      this.worldTick();
+    }, constants.WORLD_SPEED);
+  }
+
+  worldTick() {
+    for (let i = 0; i < this.state.worldParticles.length; i++) {
+      let particle = this.state.worldParticles[i];
+      particle.tick();
+    }
+  }
+
+  coordinatesWithinBounds(xpos, ypos) {
+    const worldContainerInfo = document.getElementById("worldCanvas").getBoundingClientRect();
     // Gets coordinates for upper left corner
     const worldContainer_UL_X = worldContainerInfo.left;
     const worldContainer_UL_Y = worldContainerInfo.top;
@@ -36,65 +44,23 @@ export default class World extends React.Component {
     );
   }
 
-  hasGravity() {
-    return this.state.gravity;
-  }
-
-  componentDidMount() {
-    this.interval = setInterval(() => {
-      this.tickParticles();
-    }, constants.WORLD_SPEED);
-  }
-
-  tickParticles() {
-    const worldParticles = this.state.worldParticles;
-    for (let i = 0; i < this.state.worldParticles.length; i++) {
-      const worldParticle = worldParticles[i];
-      worldParticle.particleRef.current.tick();
-    }
-  }
-
-  clickInWorld(event) {
+  addParticleToWorld(event) {
     let x = event.clientX;
     let y = event.clientY;
-    const particleRef = React.createRef();
-    const newParticle = <Particle hasGravity={true} worldRefFn={this.props.getRefFn} ref={particleRef} xpos={x} ypos={y}/>
+    const canvasRef = document.getElementById("worldCanvas");
+    let particle = new createParticle(constants.PARTICLE_SIZE, constants.PARTICLE_SIZE, "yellow", x, y, canvasRef);
     this.setState({
-      worldParticles: this.state.worldParticles.concat([{
-        particle: newParticle,
-        particleRef: particleRef
-      }]),
+      worldParticles: this.state.worldParticles.concat([particle])
     });
   }
 
-  getArrayOfParticles() {
-    let renderArray = [];
-    const worldParticles = this.state.worldParticles;
-    for (let i = 0; i < worldParticles.length; i++) {
-      const worldParticle = worldParticles[i];
-      renderArray.push(worldParticle.particle);
-    }
-    return renderArray;
-  }
-
-  getIsParticleAtPosition(xpos, ypos) {
-    for (let i = 0; i < this.state.worldParticles.length; i++) {
-      const worldParticle = this.state.worldParticles[i];
-      const particlePos = worldParticle.particleRef.current.getParticlePosition();
-      if (particlePos.x === xpos || particlePos.y === ypos) {
-        return true;
-      }
-    }
-    return false;
-  }
-
   render() {
-    const particlesToRender = this.getArrayOfParticles();
-
     return (
-      <div className="worldContainer" onClick={this.clickInWorld} style={{width: this.state.width, height: this.state.height}}>
-        {particlesToRender}
-      </div>
+      <canvas
+        id="worldCanvas"
+        onClick={this.addParticleToWorld}
+        style={{width: constants.CANVAS_WIDTH, height: constants.CANVAS_HEIGHT, context: "2d"}}
+      />
     );
   }
 }

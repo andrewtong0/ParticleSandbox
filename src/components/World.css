@@ -1,5 +1,4 @@
-.worldContainer {
-    outline-color: white;
-    outline-width: 3px;
-    outline-style: solid;
+#worldCanvas {
+    border-color: white;
+    border-style: solid;
 }
