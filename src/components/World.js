@@ -12,11 +12,14 @@ export default class World extends React.Component {
     this.addParticleToWorld = this.addParticleToWorld.bind(this);
     this.isAnotherParticleAtCoordinates = this.isAnotherParticleAtCoordinates.bind(this);
     this.isCoordinateCollidingWithParticle = this.isCoordinateCollidingWithParticle.bind(this);
+    this.onMouseUp = this.onMouseUp.bind(this);
+    this.onMouseDown = this.onMouseDown.bind(this);
 
     this.state = {
       worldParticles: []
     }
     this.canvasElement = null;
+    this.isMouseDown = false;
   }
 
   componentDidMount() {
@@ -72,9 +75,26 @@ export default class World extends React.Component {
   }
 
   isCoordinateCollidingWithParticle(x, y, particle) {
-    const insideParticleX = x < particle.x && x > particle.x + constants.PARTICLE_SIZE;
-    const insideParticleY = y < particle.y && y > particle.y + constants.PARTICLE_SIZE;
-    return(insideParticleX && insideParticleY);
+    const size = constants.PARTICLE_SIZE;
+    // Individually check corners and determine if either is colliding
+    const xUL_collision = x >= particle.x && x <= particle.x + size;
+    const xBR_collision = x + size >= particle.x && x + size <= particle.x + size;
+    const xCollision = xUL_collision || xBR_collision;
+
+    const yUL_collision = y >= particle.y && y <= particle.y + size;
+    const yBR_collision = y + size >= particle.y && y + size <= particle.y + size;
+    const yCollision = yUL_collision || yBR_collision;
+
+    // If there is a collision in both the X and Y axis, a collision has occured
+    return(xCollision && yCollision);
+  }
+
+  onMouseDown() {
+    this.isMouseDown = true;
+  }
+
+  onMouseUp() {
+    this.isMouseDown = false;
   }
 
   render() {
@@ -82,6 +102,8 @@ export default class World extends React.Component {
       <canvas
         id="worldCanvas"
         onClick={this.addParticleToWorld}
+        onMouseDown={this.onMouseDown}
+        onMouseUp={this.onMouseUp}
         width={constants.CANVAS_WIDTH}
         height={constants.CANVAS_HEIGHT}
       />

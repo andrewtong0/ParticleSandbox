@@ -26,7 +26,7 @@ export default function createParticle(pId, p_width, p_height, color, x, y, canv
       this.x < this.canvas_width - constants.CANVAS_BORDER_OFFEST,
       this.y > 0 &&
       this.y < this.canvas_height - constants.CANVAS_BORDER_OFFEST &&
-      !worldRef.isAnotherParticleAtCoordinates(x, y + constants.PARTICLE_FALL_SPEED, this.particleId)
+      !worldRef.isAnotherParticleAtCoordinates(this.x, this.y + constants.PARTICLE_FALL_SPEED, this.particleId)
     );
   }
 
