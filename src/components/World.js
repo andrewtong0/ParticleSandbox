@@ -14,18 +14,28 @@ export default class World extends React.Component {
     this.isCoordinateCollidingWithParticle = this.isCoordinateCollidingWithParticle.bind(this);
     this.onMouseUp = this.onMouseUp.bind(this);
     this.onMouseDown = this.onMouseDown.bind(this);
+    this.updateMouseCoords = this.updateMouseCoords.bind(this);
 
     this.state = {
       worldParticles: []
     }
     this.canvasElement = null;
     this.isMouseDown = false;
+    this.mouseCoords = {
+      x: -1,
+      y: -1
+    }
   }
 
   componentDidMount() {
     this.canvasElement = document.getElementById("worldCanvas");
     this.interval = setInterval(() => {
       this.worldTick();
+
+      if (this.isMouseDown && !this.isAnotherParticleAtCoordinates(this.mouseCoords.x, this.mouseCoords.y, null)) {
+        this.addParticleToWorld();
+      }
+      console.log(this.state.worldParticles.length);
     }, constants.WORLD_SPEED);
   }
 
@@ -42,12 +52,12 @@ export default class World extends React.Component {
     canvas.getContext("2d").clearRect(0, 0, canvas.width, canvas.height);
   }
 
-  addParticleToWorld(event) {
+  addParticleToWorld() {
     const canvasElementRect = this.canvasElement.getBoundingClientRect();
     const width_scaling = this.canvasElement.width / canvasElementRect.width;
     const height_scaling = this.canvasElement.height / canvasElementRect.height;
-    const x = (event.clientX - canvasElementRect.left) * width_scaling;
-    const y = (event.clientY - canvasElementRect.top) * height_scaling;
+    const x = (this.mouseCoords.x - canvasElementRect.left) * width_scaling;
+    const y = (this.mouseCoords.y- canvasElementRect.top) * height_scaling;
     let particle = new createParticle(
       this.state.worldParticles.length,
       constants.PARTICLE_SIZE,
@@ -97,11 +107,16 @@ export default class World extends React.Component {
     this.isMouseDown = false;
   }
 
+  updateMouseCoords(event) {
+    this.mouseCoords.x = event.clientX;
+    this.mouseCoords.y = event.clientY;
+  }
+
   render() {
     return (
       <canvas
         id="worldCanvas"
-        onClick={this.addParticleToWorld}
+        onMouseMove={this.updateMouseCoords}
         onMouseDown={this.onMouseDown}
         onMouseUp={this.onMouseUp}
         width={constants.CANVAS_WIDTH}
