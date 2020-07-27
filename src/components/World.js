@@ -1,5 +1,5 @@
 import React from 'react';
-import constants from '../constants.js';
+import constants, { WORLD_GRID_SNAP_VALUE } from '../constants.js';
 import createParticle from './Particle.js';
 import './World.css';
 
@@ -25,6 +25,7 @@ export default class World extends React.Component {
       x: -1,
       y: -1
     }
+    this.cooldown = 0;
   }
 
   componentDidMount() {
@@ -32,10 +33,14 @@ export default class World extends React.Component {
     this.interval = setInterval(() => {
       this.worldTick();
 
-      if (this.isMouseDown && !this.isAnotherParticleAtCoordinates(this.mouseCoords.x, this.mouseCoords.y, null)) {
-        this.addParticleToWorld();
+      if (this.isMouseDown) {
+        const canvasElementRect = this.canvasElement.getBoundingClientRect();
+        const width_scaling = this.canvasElement.width / canvasElementRect.width;
+        const height_scaling = this.canvasElement.height / canvasElementRect.height;
+        const x = (this.mouseCoords.x - canvasElementRect.left) * width_scaling;
+        const y = (this.mouseCoords.y- canvasElementRect.top) * height_scaling;
+        this.addParticleToWorld(x, y, canvasElementRect);
       }
-      console.log(this.state.worldParticles.length);
     }, constants.WORLD_SPEED);
   }
 
@@ -45,6 +50,9 @@ export default class World extends React.Component {
       let particle = this.state.worldParticles[i];
       particle.tick();
     }
+    if (this.cooldown > 0) {
+      this.cooldown--;
+    }
   }
 
   worldClear() {
@@ -52,26 +60,35 @@ export default class World extends React.Component {
     canvas.getContext("2d").clearRect(0, 0, canvas.width, canvas.height);
   }
 
-  addParticleToWorld() {
-    const canvasElementRect = this.canvasElement.getBoundingClientRect();
-    const width_scaling = this.canvasElement.width / canvasElementRect.width;
-    const height_scaling = this.canvasElement.height / canvasElementRect.height;
-    const x = (this.mouseCoords.x - canvasElementRect.left) * width_scaling;
-    const y = (this.mouseCoords.y- canvasElementRect.top) * height_scaling;
-    let particle = new createParticle(
-      this.state.worldParticles.length,
-      constants.PARTICLE_SIZE,
-      constants.PARTICLE_SIZE,
-      constants.PARTICLE_COLOUR,
-      x,
-      y,
-      canvasElementRect.width,
-      canvasElementRect.height,
-      this
-    );
-    this.setState({
-      worldParticles: this.state.worldParticles.concat([particle])
-    });
+  addParticleToWorld(x, y, canvasElementRect) {
+    if (this.cooldown <= 0 && !this.isAnotherParticleAtCoordinates(x, y, null)) {
+      let newX = x;
+      let newY = y;
+      if (constants.WORLD_GRID_SNAP_STATUS) {
+        let roundX = (x % WORLD_GRID_SNAP_VALUE) / WORLD_GRID_SNAP_VALUE > 0.5 ? WORLD_GRID_SNAP_VALUE : 0;
+        newX = Math.floor(x / WORLD_GRID_SNAP_VALUE) * WORLD_GRID_SNAP_VALUE + roundX;
+
+        let roundY = (y % WORLD_GRID_SNAP_VALUE) / WORLD_GRID_SNAP_VALUE > 0.5 ? WORLD_GRID_SNAP_VALUE : 0;
+        newY = Math.floor(y / WORLD_GRID_SNAP_VALUE) * WORLD_GRID_SNAP_VALUE + roundY;
+        console.log(newX);
+      }
+
+      let particle = new createParticle(
+        this.state.worldParticles.length,
+        constants.PARTICLE_SIZE,
+        constants.PARTICLE_SIZE,
+        constants.PARTICLE_COLOUR,
+        newX,
+        newY,
+        canvasElementRect.width,
+        canvasElementRect.height,
+        this
+      );
+      this.setState({
+        worldParticles: this.state.worldParticles.concat([particle])
+      });
+      this.cooldown = constants.PARTICLE_COOLDOWN;
+    }
   }
 
   isAnotherParticleAtCoordinates(x, y, particleId) {
@@ -87,13 +104,16 @@ export default class World extends React.Component {
   isCoordinateCollidingWithParticle(x, y, particle) {
     const size = constants.PARTICLE_SIZE;
     // Individually check corners and determine if either is colliding
-    const xUL_collision = x >= particle.x && x <= particle.x + size;
-    const xBR_collision = x + size >= particle.x && x + size <= particle.x + size;
-    const xCollision = xUL_collision || xBR_collision;
+    // Particle X falls somewhere between center of particle and right end of particle
+    const xRight_collision = x >= particle.x && x < particle.x + size;
+    // Particle X falls somewhere between center of particle and left end of particle
+    const xLeft_collision = x <= particle.x && x > particle.x - size;
+    const xCollision = xRight_collision || xLeft_collision;
 
-    const yUL_collision = y >= particle.y && y <= particle.y + size;
-    const yBR_collision = y + size >= particle.y && y + size <= particle.y + size;
-    const yCollision = yUL_collision || yBR_collision;
+    // Particle Y falls somewhere between center of particle and upper end of particle
+    const yUpper_collision = y >= particle.y && y < particle.y + size;
+    const yLower_collision = y <= particle.y && y > particle.y - size;
+    const yCollision = yUpper_collision || yLower_collision;
 
     // If there is a collision in both the X and Y axis, a collision has occured
     return(xCollision && yCollision);

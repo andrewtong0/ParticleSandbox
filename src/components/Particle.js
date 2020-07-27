@@ -10,6 +10,7 @@ export default function createParticle(pId, p_width, p_height, color, x, y, canv
   this.canvas_height = canvas_height;
   this.canvasContext = worldRef.canvasElement.getContext("2d");
   this.hasGravity = true;
+  this.isLiquid = false;
 
   this.tick = () => {
     this.canvasContext.fillStyle = color;
