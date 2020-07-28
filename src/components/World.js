@@ -95,7 +95,7 @@ export default class World extends React.Component {
         canvasElementRect.width,
         canvasElementRect.height,
         this,
-        true
+        false
       );
       this.worldArray[newX][newY] = particle;
       this.worldParticles.push(particle);
