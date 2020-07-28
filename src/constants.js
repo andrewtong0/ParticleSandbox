@@ -10,7 +10,14 @@ const CONSTANTS = {
     WORLD_GRID_SNAP_VALUE: PARTICLE_SIZE,
     CANVAS_WIDTH: 500,
     CANVAS_HEIGHT: 500,
-    CANVAS_BORDER_OFFEST: 6 + PARTICLE_SIZE
+    CANVAS_BORDER_OFFEST: 6 + PARTICLE_SIZE,
+    // Directions ordered by clockwise rotation
+    DIRECTIONS: {
+        UP: 0,
+        RIGHT: 1,
+        DOWN: 2,
+        LEFT: 3
+    }
 }
 
 module.exports = CONSTANTS;

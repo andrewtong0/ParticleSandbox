@@ -7,6 +7,7 @@ export default class World extends React.Component {
   constructor(props) {
     super(props);
 
+    this.initializeWorldArray = this.initializeWorldArray.bind(this);
     this.worldTick = this.worldTick.bind(this);
     this.worldClear = this.worldClear.bind(this);
     this.addParticleToWorld = this.addParticleToWorld.bind(this);
@@ -16,9 +17,6 @@ export default class World extends React.Component {
     this.onMouseDown = this.onMouseDown.bind(this);
     this.updateMouseCoords = this.updateMouseCoords.bind(this);
 
-    this.state = {
-      worldParticles: []
-    }
     this.canvasElement = null;
     this.isMouseDown = false;
     this.mouseCoords = {
@@ -26,10 +24,13 @@ export default class World extends React.Component {
       y: -1
     }
     this.cooldown = 0;
+    this.worldArray = [];
+    this.worldParticles = [];
   }
 
   componentDidMount() {
     this.canvasElement = document.getElementById("worldCanvas");
+    this.initializeWorldArray();
     this.interval = setInterval(() => {
       this.worldTick();
 
@@ -44,10 +45,20 @@ export default class World extends React.Component {
     }, constants.WORLD_SPEED);
   }
 
+  // When initializing the world array, we use <= and store pixels at literal x/y (rather than zero based)
+  initializeWorldArray() {
+    for (let x = 0; x <= constants.CANVAS_WIDTH; x++) {
+      this.worldArray[x] = [];
+      for (let y = 0; y <= constants.CANVAS_HEIGHT; y++) {
+        this.worldArray[x][y] = null;
+      }
+    }
+  }
+
   worldTick() {
     this.worldClear();
-    for (let i = 0; i < this.state.worldParticles.length; i++) {
-      let particle = this.state.worldParticles[i];
+    for (let i = 0; i < this.worldParticles.length; i++) {
+      let particle = this.worldParticles[i];
       particle.tick();
     }
     if (this.cooldown > 0) {
@@ -61,20 +72,21 @@ export default class World extends React.Component {
   }
 
   addParticleToWorld(x, y, canvasElementRect) {
-    if (this.cooldown <= 0 && !this.isAnotherParticleAtCoordinates(x, y, null)) {
-      let newX = x;
-      let newY = y;
-      if (constants.WORLD_GRID_SNAP_STATUS) {
-        let roundX = (x % WORLD_GRID_SNAP_VALUE) / WORLD_GRID_SNAP_VALUE > 0.5 ? WORLD_GRID_SNAP_VALUE : 0;
-        newX = Math.floor(x / WORLD_GRID_SNAP_VALUE) * WORLD_GRID_SNAP_VALUE + roundX;
+    let newX = x;
+    let newY = y;
 
-        let roundY = (y % WORLD_GRID_SNAP_VALUE) / WORLD_GRID_SNAP_VALUE > 0.5 ? WORLD_GRID_SNAP_VALUE : 0;
-        newY = Math.floor(y / WORLD_GRID_SNAP_VALUE) * WORLD_GRID_SNAP_VALUE + roundY;
-        console.log(newX);
-      }
+    if (constants.WORLD_GRID_SNAP_STATUS) {
+      let roundX = (x % WORLD_GRID_SNAP_VALUE) / WORLD_GRID_SNAP_VALUE > 0.5 ? WORLD_GRID_SNAP_VALUE : 0;
+      newX = Math.floor(x / WORLD_GRID_SNAP_VALUE) * WORLD_GRID_SNAP_VALUE + roundX;
+
+      let roundY = (y % WORLD_GRID_SNAP_VALUE) / WORLD_GRID_SNAP_VALUE > 0.5 ? WORLD_GRID_SNAP_VALUE : 0;
+      newY = Math.floor(y / WORLD_GRID_SNAP_VALUE) * WORLD_GRID_SNAP_VALUE + roundY;
+    }
+
+    if (this.cooldown <= 0 && !this.isAnotherParticleAtCoordinates(newX, newY, null)) {
 
       let particle = new createParticle(
-        this.state.worldParticles.length,
+        this.worldParticles.length,
         constants.PARTICLE_SIZE,
         constants.PARTICLE_SIZE,
         constants.PARTICLE_COLOUR,
@@ -82,27 +94,31 @@ export default class World extends React.Component {
         newY,
         canvasElementRect.width,
         canvasElementRect.height,
-        this
+        this,
+        true
       );
-      this.setState({
-        worldParticles: this.state.worldParticles.concat([particle])
-      });
+      this.worldArray[newX][newY] = particle;
+      this.worldParticles.push(particle);
       this.cooldown = constants.PARTICLE_COOLDOWN;
+      console.log('added');
     }
   }
 
   isAnotherParticleAtCoordinates(x, y, particleId) {
-    for (let i = 0; i < this.state.worldParticles.length; i++) {
-      const particle = this.state.worldParticles[i];
-      if (particleId !== particle.particleId && this.isCoordinateCollidingWithParticle(x, y, particle)) {
-        return true;
-      }
+    // If coordinates are out of bounds, pretend there is another particle restricting movement
+    // TODO: If the pixel is trying to move out of bounds (e.g. explosion causing it to fly outside), place it at 0. If occupied, cascade until free spot found.
+    if (x < 0 || constants.CANVAS_WIDTH < x || y < 0 || constants.CANVAS_HEIGHT < y) return true;
+
+    let particle = this.worldArray[x][y];
+    if (particle !== null && particle.particleId !== particleId) {
+      return true;
     }
     return false;
   }
 
   isCoordinateCollidingWithParticle(x, y, particle) {
     const size = constants.PARTICLE_SIZE;
+
     // Individually check corners and determine if either is colliding
     // Particle X falls somewhere between center of particle and right end of particle
     const xRight_collision = x >= particle.x && x < particle.x + size;
