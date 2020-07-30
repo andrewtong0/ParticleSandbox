@@ -95,7 +95,7 @@ export default class World extends React.Component {
         canvasElementRect.width,
         canvasElementRect.height,
         this,
-        false
+        true
       );
       this.worldArray[newX][newY] = particle;
       this.worldParticles.push(particle);
@@ -113,6 +113,33 @@ export default class World extends React.Component {
     if (particle !== null && particle.particleId !== particleId) {
       return true;
     }
+    return false;
+  }
+
+  // Checks if particle exists between origin and destination coordinates
+  isAnotherParticleBetweenCoordinates(origin_x, origin_y, destination_x, destination_y, particleId) {
+    if (origin_x < destination_x) {
+      for (let x = origin_x; x <= destination_x; x++) {
+        if (this.isAnotherParticleAtCoordinates(x, origin_y, particleId)) return true;
+      }
+    }
+    else if (origin_x > destination_x) {
+      for (let x = origin_x; x >= destination_x; x--) {
+        if (this.isAnotherParticleAtCoordinates(x, origin_y, particleId)) return true;
+      }
+    }
+
+    if (origin_y < destination_y) {
+      for (let y = origin_y; y <= destination_y; y++) {
+        if (this.isAnotherParticleAtCoordinates(origin_x, y, particleId)) return true;
+      }
+    }
+    else if (origin_y > destination_y) {
+      for (let y = origin_y; y >= destination_y; y--) {
+        if (this.isAnotherParticleAtCoordinates(origin_x, y, particleId)) return true;
+      }
+    }
+
     return false;
   }
 

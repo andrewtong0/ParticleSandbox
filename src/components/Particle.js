@@ -11,7 +11,10 @@ export default function createParticle(pId, p_width, p_height, color, x, y, canv
   this.canvasContext = worldRef.canvasElement.getContext("2d");
   this.hasGravity = true;
   this.isLiquid = isLiquid;
-  this.stimulation = 120;
+  this.liquidPolarity = 0; // Number of spaces away to check whether a particle is there to snap to it
+  this.liquidTravelDirection = null;
+  this.stimulation = constants.PARTICLE_LIQUID_STIMULATION;
+  this.liquidTickMovement = constants.PARTICLE_LIQUID_MOVETICK;
 
   this.tick = () => {
     this.canvasContext.fillStyle = color;
@@ -22,33 +25,75 @@ export default function createParticle(pId, p_width, p_height, color, x, y, canv
       // If the particle can fall, it should
       if (fallStatus) {
         this.moveParticle(constants.DIRECTIONS.DOWN);
+
+        // When a liquid falls, it regains stimulation and resets its travel direction
+        this.stimulation = constants.PARTICLE_LIQUID_STIMULATION;
+        this.liquidTravelDirection = null;
       }
       // If the particle is on the ground
       else {
         // Liquid
-        if (this.isLiquid && this.stimulation > 0) {
-          const canMoveLeft = !this.isAnotherParticleAdjacent(constants.DIRECTIONS.LEFT);
-          const canMoveRight = !this.isAnotherParticleAdjacent(constants.DIRECTIONS.RIGHT);
+        if (this.isLiquid) {
+          if (this.liquidTravelDirection === null) {
+            if (this.liquidPolarity > 0) {
+              const particleCloseLeft = worldRef.isAnotherParticleBetweenCoordinates(this.x - ((constants.PARTICLE_SIZE * 2) * this.liquidPolarity), this.y, this.particleId);
+              const particleCloseRight = worldRef.isAnotherParticleBetweenCoordinates(this.x + ((constants.PARTICLE_SIZE * 2) * this.liquidPolarity), this.y, this.particleId);
 
-          if (canMoveLeft && canMoveRight) {
-            const horizontalDirection = Math.floor(Math.random() * 2);
-            // Move left
-            if (horizontalDirection === 0) {
-              this.moveParticle(constants.DIRECTIONS.LEFT);
+              if (particleCloseLeft && particleCloseRight) {
+                const chosenDirection = Math.floor(Math.random() * 2);
+
+                if (chosenDirection === 0) {
+                  this.liquidTravelDirection = constants.DIRECTIONS.LEFT;
+                }
+                else {
+                  this.liquidTravelDirection = constants.DIRECTIONS.RIGHT;
+                }
+                this.moveParticle(this.liquidTravelDirection);
+                console.log("snap");
+              }
+              else if (particleCloseLeft) {
+                this.liquidTravelDirection = constants.DIRECTIONS.LEFT;
+                this.moveParticle(this.liquidTravelDirection);
+                console.log("snap");
+              }
+              else if (particleCloseRight) {
+                this.liquidTravelDirection = constants.DIRECTIONS.RIGHT;
+                this.moveParticle(this.liquidTravelDirection);
+                console.log("snap");
+              }
             }
-            // Move right
             else {
-              this.moveParticle(constants.DIRECTIONS.RIGHT);
+              const canMoveLeft = !this.isAnotherParticleAdjacent(constants.DIRECTIONS.LEFT);
+              const canMoveRight = !this.isAnotherParticleAdjacent(constants.DIRECTIONS.RIGHT);
+
+              if (canMoveLeft && canMoveRight) {
+                const horizontalDirection = Math.floor(Math.random() * 2);
+                // Move left
+                if (horizontalDirection === 0) {
+                  this.liquidTravelDirection = constants.DIRECTIONS.LEFT;
+                }
+                // Move right
+                else {
+                  this.liquidTravelDirection = constants.DIRECTIONS.RIGHT;
+                }
+              }
+              else if (canMoveLeft) {
+                this.liquidTravelDirection = constants.DIRECTIONS.LEFT;
+              }
+              else if (canMoveRight) {
+                this.liquidTravelDirection = constants.DIRECTIONS.RIGHT;
+              }
             }
           }
-          else if (canMoveLeft) {
-            this.moveParticle(constants.DIRECTIONS.LEFT);
-          }
-          else if (canMoveRight) {
-            this.moveParticle(constants.DIRECTIONS.RIGHT);
+
+          if (this.stimulation > 0 && this.liquidTickMovement / constants.PARTICLE_LIQUID_MOVETICK > 1) {
+            this.moveParticle(this.liquidTravelDirection);
+
+            this.stimulation--;
+            this.liquidTickMovement = 0;
           }
 
-          this.stimulation--;
+          this.liquidTickMovement++;
         }
       }
     }
@@ -59,9 +104,9 @@ export default function createParticle(pId, p_width, p_height, color, x, y, canv
   this.canFall = () => {
     return (
       this.hasGravity &&
-      this.x > 0 &&
+      this.x >= 0 &&
       this.x < this.canvas_width - constants.CANVAS_BORDER_OFFEST,
-      this.y > 0 &&
+      this.y >= 0 &&
       this.y < this.canvas_height - constants.CANVAS_BORDER_OFFEST &&
 
       // Check for collision at next spot (particle fall speed), but make sure we're checking bottom edge by offsetting by particle's size
@@ -71,18 +116,20 @@ export default function createParticle(pId, p_width, p_height, color, x, y, canv
 
   this.moveParticle = (direction) => {
     let new_x = this.x, new_y = this.y;
+    const canMoveLeft = !this.isAnotherParticleAdjacent(constants.DIRECTIONS.LEFT);
+    const canMoveRight = !this.isAnotherParticleAdjacent(constants.DIRECTIONS.RIGHT);
     switch(direction) {
       case constants.DIRECTIONS.UP:
-        new_y -= constants.PARTICLE_FALL_SPEED;
+        new_y -= constants.PARTICLE_LIQUID_SPEED;
         break;
       case constants.DIRECTIONS.RIGHT:
-        new_x += constants.PARTICLE_FALL_SPEED;
+        if (canMoveRight) new_x += constants.PARTICLE_LIQUID_SPEED;
         break;
       case constants.DIRECTIONS.DOWN:
         new_y += constants.PARTICLE_FALL_SPEED;
         break;
       case constants.DIRECTIONS.LEFT:
-        new_x -= constants.PARTICLE_FALL_SPEED;
+        if (canMoveLeft) new_x -= constants.PARTICLE_LIQUID_SPEED;
         break;
       default:
         break;
